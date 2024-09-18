@@ -46,18 +46,21 @@ class PolicyIteration(AbstractSolver):
                 np.eye(self.env.action_space.n)[action]
         """
 
+        # Find the best action by one-step lookahead
+        # Ties are resolved in favor of actions with lower indexes (Hint: use max/argmax directly)
+
         # Evaluate the current policy
         self.policy_eval()
 
-        # For each state...
+        # Policy Improvement
         for s in range(self.env.observation_space.n):
-            # Find the best action by one-step lookahead
-            # Ties are resolved in favor of actions with lower indexes (Hint: use max/argmax directly).
 
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
+            policy_action = np.argmax(self.policy[s])
+            action_values = self.one_step_lookahead(s)
+            best_action = np.argmax(action_values)
 
+            self.policy[s] = np.eye(self.env.action_space.n)[best_action]
+                
 
         # In DP methods we don't interact with the environment so we will set the reward to be the sum of state values
         # and the number of steps to -1 representing an invalid value
@@ -103,6 +106,29 @@ class PolicyIteration(AbstractSolver):
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+        
+        # Initialize the transition matrix P and reward vector R
+        P = np.zeros((self.env.observation_space.n, self.env.observation_space.n))
+        R = np.zeros(self.env.observation_space.n)
+        
+        # Fill in P and R based on the deterministic policy
+        for s in range(self.env.observation_space.n):
+            # Find the action chosen by the policy for state s
+            action = np.argmax(self.policy[s])
+            
+            for prob, next_state, reward, done in self.env.P[s][action]:
+                P[s, next_state] += prob
+                R[s] += prob * reward
+        
+        # Bellman Equation (I - gamma * P) * V = R
+        I = np.eye(self.env.observation_space.n)
+        A = I - self.options.gamma * P
+        b = R
+        
+        self.V = np.linalg.solve(A, b)
+            
+
+
 
     def create_greedy_policy(self):
         """
