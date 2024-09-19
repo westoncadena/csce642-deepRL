@@ -66,11 +66,11 @@ class ValueIteration(AbstractSolver):
 
         # Update the estimated value of each state
         for each_state in range(self.env.observation_space.n):
-            # Do a one-step lookahead to find the best action
-            # Update the value function. Ref: Sutton book eq. 4.10.
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
+             # Do a one-step lookahead to find the best action
+            A = self.one_step_lookahead(each_state)
+            
+            # update each_state's V to the max of A
+            self.V[each_state] = np.max(A)
 
         # Dont worry about this part
         self.statistics[Statistics.Rewards.value] = np.sum(self.V)
@@ -137,9 +137,9 @@ class ValueIteration(AbstractSolver):
             Outputs: (what you need to output)
                 return action as an integer
             """
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
+            A = self.one_step_lookahead(state)
+            
+            return np.argmax(A)
             
 
         return policy_fn
@@ -192,6 +192,21 @@ class AsynchVI(ValueIteration):
         # Do a one-step lookahead to find the best action       #
         # Update the value function. Ref: Sutton book eq. 4.10. #
         #########################################################
+        
+        # Pop from the queue
+        state = self.pq.pop()
+
+        # Do a one-step lookahead to find the best action
+        A = self.one_step_lookahead(each_state)
+
+        best_action_value = np.max(A)
+
+        # push back on queue with pritoy based on best_action_value
+        self.pq.push(s, -abs(self.V[s] - best_action_value))
+        
+        # update each_state's V to the max of A
+        self.V[each_state] = best_action_value
+
 
         # you can ignore this part
         self.statistics[Statistics.Rewards.value] = np.sum(self.V)
