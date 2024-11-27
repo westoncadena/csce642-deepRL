@@ -57,14 +57,46 @@ class MonteCarlo(AbstractSolver):
             visited states over all sampled episodes
         """
 
-        # Generate an episode.
         # An episode is an array of (state, action, reward) tuples
         episode = []
         state, _ = self.env.reset()
-        discount_factor = self.options.gamma
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+        # Generate an episode.
+        for step in range(self.options.steps):
+
+            # Choose an action based
+            probs = self.policy(state)
+            action = np.random.choice(np.arange(len(probs)), p=probs)
+
+            # take step
+            next_state, reward, done, _ = self.step(action)
+
+            # add to episode
+            episode.append((state, action, reward))
+            state = next_state
+
+            # check if terminal state
+            if done:
+                print("Terminal State")
+                break
+
+        G = 0
+        visited = set()
+        for state, action, reward in reversed(episode):
+            G = reward + self.options.gamma * G
+            
+            if (state, action) not in visited:
+                visited.add((state,action))
+
+                self.returns_sum[(state, action)] += G
+                self.returns_count[(state, action)] += 1
+
+                # Average 
+                self.Q[state][action] = self.returns_sum[(state, action)] / self.returns_count[(state, action)]
+            
+        
 
     def __str__(self):
         return "Monte Carlo"
@@ -87,10 +119,20 @@ class MonteCarlo(AbstractSolver):
         nA = self.env.action_space.n
 
         def policy_fn(observation):
+            print("Observation = ", observation)
+
             ################################
             #   YOUR IMPLEMENTATION HERE   #
             ################################
 
+            action_probabilitys = np.ones(nA, dtype=float) * self.options.epsilon / nA
+
+            best_action = np.argmax(self.Q[observation])
+
+            action_probabilitys[best_action] += 1.0 - self.options.epsilon
+
+            return action_probabilitys
+            
         return policy_fn
 
     def create_greedy_policy(self):
@@ -106,10 +148,7 @@ class MonteCarlo(AbstractSolver):
         """
 
         def policy_fn(state):
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
-
+            return np.argmax(self.Q[state])
 
         return policy_fn
 
@@ -159,10 +198,48 @@ class OffPolicyMC(MonteCarlo):
         episode = []
         # Reset the environment
         state, _ = self.env.reset()
-
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+
+        # Generate an episode.
+        for step in range(self.options.steps):
+
+            # Choose an action based
+            probs = self.behavior_policy(state)
+            action = np.random.choice(np.arange(len(probs)), p=probs)
+
+            # take step
+            next_state, reward, done, _ = self.step(action)
+
+            # add to episode
+            episode.append((state, action, reward))
+            state = next_state
+
+            # check if terminal state
+            if done:
+                print("Terminal State")
+                break
+
+
+        G = 0
+        w = 1
+        for state, action, reward in reversed(episode):
+            G = reward + self.options.gamma * G
+
+            behavior_probs = self.behavior_policy(state)[action]
+
+            # Avoid dividing by 0
+            if behavior_probs > 0:
+                
+                self.C[state][action] += w
+
+                # Update Q based on the importance sampling 
+                self.Q[state][action] += (w / self.C[state][action]) * (G - self.Q[state][action])
+
+                w = w * (1 / behavior_probs)
+            
+        
         
 
     def create_random_policy(self):

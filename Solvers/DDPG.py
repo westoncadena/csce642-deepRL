@@ -154,6 +154,15 @@ class DDPG(AbstractSolver):
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+        next_actions = self.target_actor_critic.pi(next_states)
+        target_q_values = self.target_actor_critic.q(next_states, next_actions)
+
+           
+        target_q = rewards + self.options.gamma * (1 - dones) * target_q_values
+        
+        # Ensure the result is a tensor
+        return torch.as_tensor(target_q, dtype=torch.float32)
+
 
 
     def replay(self):
@@ -216,10 +225,23 @@ class DDPG(AbstractSolver):
         """
 
         state, _ = self.env.reset()
+
         for _ in range(self.options.steps):
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
+            
+            action = self.select_action(state)
+
+            next_state, reward, done, _ = self.step(action)
+
+            self.memorize(state, action, reward, next_state, done)
+
+            self.replay()
+
+            self.update_target_networks()
+
+            if done:
+                break
+
+            state = next_state
             
 
     def q_loss(self, current_q, target_q):
@@ -233,9 +255,7 @@ class DDPG(AbstractSolver):
         Returns:
             The unreduced loss (as a tensor).
         """
-        ################################
-        #   YOUR IMPLEMENTATION HERE   #
-        ################################
+        return (current_q - target_q).pow(2)
 
     def pi_loss(self, states):
         """
@@ -255,9 +275,8 @@ class DDPG(AbstractSolver):
         Returns:
             The unreduced loss (as a tensor).
         """
-        ################################
-        #   YOUR IMPLEMENTATION HERE   #
-        ################################
+        actions = self.actor_critic.pi(states)
+        return -self.actor_critic.q(states, actions)
 
     def __str__(self):
         return "DDPG"

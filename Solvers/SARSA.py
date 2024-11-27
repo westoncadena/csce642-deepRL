@@ -47,6 +47,30 @@ class Sarsa(AbstractSolver):
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+        probs = self.epsilon_greedy_action(state)
+        action = np.random.choice(np.arange(len(probs)), p=probs)
+
+        # get number of steps per episode
+        steps = self.options.steps
+
+        for step in range(steps):
+            # Take action A, observe R, S'
+            next_state, reward, done, _ = self.step(action)
+
+            # Choose A' from S' using epsilon greedy action
+            next_probs = self.epsilon_greedy_action(next_state)
+            next_action = np.random.choice(np.arange(len(next_probs)), p=next_probs)
+
+            # Update Q value
+            self.Q[state][action] = self.Q[state][action] + self.options.alpha * (reward + self.options.gamma * self.Q[next_state][next_action] - self.Q[state][action])
+            
+            # Update state and action
+            state = next_state
+            action = next_action
+
+            # break if terminal state
+            if done:
+                break
 
     def __str__(self):
         return "Sarsa"
@@ -63,6 +87,7 @@ class Sarsa(AbstractSolver):
             ################################
             #   YOUR IMPLEMENTATION HERE   #
             ################################
+            return np.argmax(self.Q[state])
 
         return policy_fn
 
@@ -80,6 +105,14 @@ class Sarsa(AbstractSolver):
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+        num_actions = self.env.action_space.n
+        action_probabilitys = np.ones(num_actions, dtype=float) * self.options.epsilon / num_actions
+
+        best_action = np.argmax(self.Q[state])
+
+        action_probabilitys[best_action] += 1.0 - self.options.epsilon
+
+        return action_probabilitys
 
     def plot(self, stats, smoothing_window=20, final=False):
         plotting.plot_episode_stats(stats, smoothing_window, final=final)

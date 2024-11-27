@@ -1018,7 +1018,7 @@ class dqn(unittest.TestCase):
 
         self.assertTrue(
             np.mean(ep_len[:5]) < 200 and np.max(ep_len[80:]) > 800,
-            "got unexpected rewards for cartpole",
+            "got unexpected rewards for cartpole, episode length = " + str(np.mean(ep_len[:5])) + " max = " + str(np.max(ep_len[80:])), 
         )
         self.__class__.points += 2
         rewards_smoothed = (
@@ -1031,7 +1031,7 @@ class dqn(unittest.TestCase):
             np.max(rewards_smoothed) > 750 and np.mean(rewards_smoothed[:20]) < 100,
             "got unexpected rewards for cartpole",
         )
-        self.__class__.points += 1
+        self.__class__.points += 2
         self.assertTrue(
             np.max(rewards_smoothed) > 900 and np.mean(rewards_smoothed[:20]) < 100,
             "got unexpected rewards for cartpole",
@@ -1213,7 +1213,7 @@ class a2c(unittest.TestCase):
                 np.array([-0.0018, -0.0168, 1.4699, -0.2579, -0.3580]),
                 1e-2,
             ),
-            "`critic_loss' returns unexpected values.",
+            "`critic_loss: 1' returns unexpected values.",
         )
         # Test 2
         test_advantage = torch.tensor([0.6318, 0.5236, 0.0985, 0.9992])
@@ -1224,7 +1224,7 @@ class a2c(unittest.TestCase):
                 np.array([-0.0329, 0.9396, -0.0335, -0.7388]),
                 1e-2,
             ),
-            "`critic_loss' returns unexpected values.",
+            "`critic_loss: 2' returns unexpected values.",
         )
         self.__class__.points += 2
 

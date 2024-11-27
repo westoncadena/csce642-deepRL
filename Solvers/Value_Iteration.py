@@ -155,8 +155,8 @@ class AsynchVI(ValueIteration):
         for s in range(self.env.observation_space.n):
             # Do a one-step lookahead to find the best action
             A = self.one_step_lookahead(s)
-            best_action_value = np.max(A)
-            self.pq.push(s, -abs(self.V[s] - best_action_value))
+            V_s = np.max(A)
+            self.pq.push(s, -abs(self.V[s] - V_s))
             for a in range(self.env.action_space.n):
                 for prob, next_state, reward, done in self.env.P[s][a]:
                     if prob > 0:
@@ -185,27 +185,22 @@ class AsynchVI(ValueIteration):
             self.V
                 this is still the same as the previous
         """
-
-        #########################################################
-        # YOUR IMPLEMENTATION HERE                              #
-        # Choose state with the maximal value change potential  #
-        # Do a one-step lookahead to find the best action       #
-        # Update the value function. Ref: Sutton book eq. 4.10. #
-        #########################################################
         
-        # Pop from the queue
+        # Pop the state
         state = self.pq.pop()
 
-        # Do a one-step lookahead to find the best action
-        A = self.one_step_lookahead(each_state)
+        # One-step lookahead to calculate the best action and update the value of the state
+        A = self.one_step_lookahead(state)
+        V_s = np.max(A)
 
-        best_action_value = np.max(A)
+        self.V[state] = V_s
 
-        # push back on queue with pritoy based on best_action_value
-        self.pq.push(s, -abs(self.V[s] - best_action_value))
-        
-        # update each_state's V to the max of A
-        self.V[each_state] = best_action_value
+        # Update the prioity of the state and its predecessors 
+        for pred_state in self.pred[state]:
+            pred_action_values = self.one_step_lookahead(pred_state)
+            pred_V_s = np.max(pred_action_values)
+
+            self.pq.update(pred_state, -abs(self.V[pred_state] - pred_V_s))
 
 
         # you can ignore this part

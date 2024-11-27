@@ -131,6 +131,23 @@ class A2C(AbstractSolver):
             # an episode.                  # 
             ################################
 
+            action, prob, value = self.select_action(state)
+
+            next_state, reward, done, _ = self.step(action)
+
+            # compute advantage
+            with torch.no_grad():
+                _, next_value = self.actor_critic(torch.as_tensor(next_state, dtype=torch.float32))
+                advantage = reward + (1 - done) * self.options.gamma * next_value - value
+
+            # update actor-critic
+            self.update_actor_critic(advantage, prob, value)
+
+            if done: 
+                return
+            
+            state = next_state
+
     def actor_loss(self, advantage, prob):
         """
         The policy gradient loss function.
@@ -147,9 +164,8 @@ class A2C(AbstractSolver):
         Returns:
             The unreduced loss (as a tensor).
         """
-        ################################
-        #   YOUR IMPLEMENTATION HERE   #
-        ################################)
+        loss =  -torch.log(prob) * advantage
+        return torch.as_tensor(loss, dtype=torch.float32)
 
     def critic_loss(self, advantage, value):
         """
@@ -162,9 +178,8 @@ class A2C(AbstractSolver):
         Returns:
             The unreduced loss (as a tensor).
         """
-        ################################
-        #   YOUR IMPLEMENTATION HERE   #
-        ################################
+        loss = - advantage * value
+        return torch.as_tensor(loss, dtype=torch.float32)
 
     def __str__(self):
         return "A2C"

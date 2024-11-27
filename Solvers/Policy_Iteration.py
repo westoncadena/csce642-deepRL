@@ -111,7 +111,6 @@ class PolicyIteration(AbstractSolver):
         P = np.zeros((self.env.observation_space.n, self.env.observation_space.n))
         R = np.zeros(self.env.observation_space.n)
         
-        # Fill in P and R based on the deterministic policy
         for s in range(self.env.observation_space.n):
             # Find the action chosen by the policy for state s
             action = np.argmax(self.policy[s])

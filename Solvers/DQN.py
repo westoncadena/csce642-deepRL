@@ -91,16 +91,29 @@ class DQN(AbstractSolver):
 
         Use:
             self.env.action_space.n: Number of avilable actions
-            self.torch.as_tensor(state): Convert Numpy array ('state') to a tensor
+            : Convert Numpy array ('state') to a tensor
             self.model(state): Returns the predicted Q values at a 
                 'state' as a tensor. One value per action.
             torch.argmax(values): Returns the index corresponding to the highest value in
                 'values' (a tensor)
         """
         # Don't forget to convert the states to torch tensors to pass them through the network.
-        ################################
-        #   YOUR IMPLEMENTATION HERE   #
-        ################################
+
+        # Find the predicted Q values at a state
+        state = torch.as_tensor(state, dtype=torch.float32).unsqueeze(0)
+        values = self.model(state)
+
+        # Find the best action assoicated with the highest value in values
+        best_action = torch.argmax(values)
+
+        # Initalized action probability numpy array with the epsilon value divided among all states
+        num_actions = self.env.action_space.n
+        action_probabilitys = np.ones(num_actions, dtype=float) * (self.options.epsilon / num_actions)
+
+        # Create the epsilon greedy policy
+        action_probabilitys[best_action] += 1.0 - self.options.epsilon
+
+        return action_probabilitys
 
 
     def compute_target_values(self, next_states, rewards, dones):
@@ -113,6 +126,15 @@ class DQN(AbstractSolver):
         ################################
         #   YOUR IMPLEMENTATION HERE   #
         ################################
+
+        with torch.no_grad():
+            # predict the q values for next_states
+            max_next_q_values = torch.max(self.target_model(next_states), dim=1)[0]
+
+            # get the target q values for current state
+            target_q_values = rewards + (1 - dones) * self.options.gamma * max_next_q_values
+
+        return target_q_values
 
 
     def replay(self):
@@ -155,6 +177,7 @@ class DQN(AbstractSolver):
             # Calculate loss
             loss_q = self.loss_fn(current_q, target_q)
 
+
             # Optimize the Q-network
             self.optimizer.zero_grad()
             loss_q.backward()
@@ -185,10 +208,31 @@ class DQN(AbstractSolver):
         state, _ = self.env.reset()
 
         for _ in range(self.options.steps):
-            ################################
-            #   YOUR IMPLEMENTATION HERE   #
-            ################################
+            
+            # Choose A from S using epsilon greedy action
+            probs = self.epsilon_greedy(state)
+            action = np.random.choice(np.arange(len(probs)), p=probs)
 
+            # Take action A, observe R, S'
+            next_state, reward, done, _ = self.step(action)
+
+            # Store the transition in memory
+            self.memorize(state, action, reward, next_state, done)
+
+            # Perform a replay step
+            self.replay()
+
+            # Update target network every N steps
+            if self.n_steps % self.options.update_target_estimator_every == 0:
+                self.update_target_model()
+
+            # Count kept across episodes
+            self.n_steps += 1
+
+            state = next_state
+
+            if done: 
+                break
 
     def __str__(self):
         return "DQN"
